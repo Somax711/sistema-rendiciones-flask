@@ -1,0 +1,224 @@
+{% extends "layout.html" %}
+
+{% block title %}Ver Rendición #{{ rendicion.numero_rendicion }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('rendiciones.index') }}">Rendiciones</a></li>
+            <li class="breadcrumb-item active">Rendición #{{ rendicion.numero_rendicion }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header con botones -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-text"></i> 
+                    Rendición #{{ rendicion.numero_rendicion }}
+                </h5>
+                
+                <div class="btn-group">
+                    <!-- Botón volver -->
+                    <a href="{{ url_for('rendiciones.index') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Volver
+                    </a>
+                    
+                    <!-- Botón descargar todos los comprobantes -->
+                    {% set items_con_comprobante = rendicion.items|selectattr('comprobante_path')|list %}
+                    {% if items_con_comprobante|length > 0 %}
+                    <button type="button" 
+                            class="btn btn-success btn-sm"
+                            onclick="descargarTodosComprobantes({{ rendicion.id }}, '{{ rendicion.numero_rendicion }}')">
+                        <i class="bi bi-file-earmark-zip"></i>
+                        Descargar Todos ({{ items_con_comprobante|length }})
+                    </button>
+                    {% endif %}
+                    
+                    <!-- Botón editar (solo si está en borrador o pendiente) -->
+                    {% if rendicion.estado in ['borrador', 'pendiente'] and 
+                          (current_user.rol == 'admin' or rendicion.usuario_id == current_user.id) %}
+                    <a href="{{ url_for('rendiciones.editar', id=rendicion.id) }}" 
+                       class="btn btn-warning btn-sm">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información General -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-info-circle"></i> Información General
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p><strong>N° Rendición:</strong><br>{{ rendicion.numero_rendicion }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Estado:</strong><br>
+                        {% if rendicion.estado == 'pendiente' %}
+                            <span class="badge bg-warning">Pendiente</span>
+                        {% elif rendicion.estado == 'aprobada' %}
+                            <span class="badge bg-success">Aprobada</span>
+                        {% elif rendicion.estado == 'rechazada' %}
+                            <span class="badge bg-danger">Rechazada</span>
+                        {% elif rendicion.estado == 'pagada' %}
+                            <span class="badge bg-info">Pagada</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ rendicion.estado|title }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Usuario:</strong><br>{{ rendicion.usuario.nombre }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Fecha Creación:</strong><br>{{ rendicion.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <p><strong>Fecha Inicio:</strong><br>{{ rendicion.fecha_inicio.strftime('%d/%m/%Y') if rendicion.fecha_inicio else '-' }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Fecha Fin:</strong><br>{{ rendicion.fecha_fin.strftime('%d/%m/%Y') if rendicion.fecha_fin else '-' }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Proyecto:</strong><br>{{ rendicion.proyecto or '-' }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Centro de Costo:</strong><br>{{ rendicion.centro_costo or '-' }}</p>
+                </div>
+            </div>
+            
+            {% if rendicion.descripcion %}
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <p><strong>Descripción:</strong><br>{{ rendicion.descripcion }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Items de Gastos -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list-ul"></i> Items de Gastos</span>
+            <span class="badge bg-primary">{{ rendicion.items|length }} items</span>
+        </div>
+        <div class="card-body">
+            {% if rendicion.items %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo Gasto</th>
+                            <th>Descripción</th>
+                            <th>Proveedor</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Comprobante</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rendicion.items %}
+                        <tr>
+                            <td>{{ item.fecha_gasto.strftime('%d/%m/%Y') if item.fecha_gasto else '-' }}</td>
+                            <td>{{ item.tipo_gasto or '-' }}</td>
+                            <td>{{ item.descripcion }}</td>
+                            <td>{{ item.proveedor or '-' }}</td>
+                            <td class="text-end">${{ "{:,.0f}".format(item.monto) if item.monto else '0' }}</td>
+                            <td class="text-center">
+                                {% if item.comprobante_path %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Adjunto
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-exclamation-circle"></i> Sin comprobante
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if item.comprobante_path %}
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <!-- Botón Ver -->
+                                    <a href="{{ url_for('rendiciones.ver_comprobante', item_id=item.id) }}" 
+                                       class="btn btn-info btn-sm" 
+                                       title="Ver comprobante"
+                                       target="_blank">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <!-- Botón Descargar -->
+                                    <button type="button"
+                                            class="btn btn-primary btn-sm"
+                                            onclick="descargarComprobante({{ item.id }}, '{{ item.descripcion }}')"
+                                            title="Descargar comprobante">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="4" class="text-end">TOTAL:</th>
+                            <th class="text-end">${{ "{:,.0f}".format(rendicion.monto_total) if rendicion.monto_total else '0' }}</th>
+                            <th colspan="2"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No hay items registrados en esta rendición.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Historial de Aprobación -->
+
+    {% if rendicion.estado in ['aprobada', 'rechazada', 'pagada'] %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-clock-history"></i> Historial de Aprobación
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% if rendicion.aprobador_id %}
+                <div class="col-md-3">
+                    <p><strong>Aprobador:</strong><br>{{ rendicion.aprobador.nombre }}</p>
+                </div>
+                {% endif %}
+                {% if rendicion.fecha_aprobacion %}
+                <div class="col-md-3">
+                    <p><strong>Fecha:</strong><br>{{ rendicion.fecha_aprobacion.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                {% endif %}
+                {% if rendicion.comentarios_aprobacion %}
+                <div class="col-md-6">
+                    <p><strong>Comentarios:</strong><br>{{ rendicion.comentarios_aprobacion }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

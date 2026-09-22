@@ -1,0 +1,233 @@
+{% extends 'layout.html' %}
+{% block title %}Revisar Rendición {{ rendicion.numero_rendicion }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('aprobaciones.index') }}">Aprobaciones</a></li>
+        <li class="breadcrumb-item active">Revisar {{ rendicion.numero_rendicion }}</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="card mb-4 shadow-sm border-primary">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-clipboard-check"></i>
+            Revisión — N° {{ rendicion.numero_rendicion }}
+        </h5>
+        <a href="{{ url_for('download.descargar_rendicion_pdf', rendicion_id=rendicion.id) }}"
+           class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-pdf"></i> Descargar PDF completo
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Datos de la rendición -->
+    <div class="col-lg-8">
+
+        <!-- Info general -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header"><i class="bi bi-info-circle"></i> Información General</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Colaborador</div>
+                        <strong>{{ rendicion.usuario.nombre if rendicion.usuario else '—' }}</strong>
+                    </div>
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Email</div>
+                        <strong>{{ rendicion.usuario.email if rendicion.usuario else '—' }}</strong>
+                    </div>
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Departamento</div>
+                        <strong>{{ rendicion.usuario.departamento or '—' }}</strong>
+                    </div>
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Período</div>
+                        <strong>
+                            {{ rendicion.fecha_inicio.strftime('%d/%m/%Y') }} —
+                            {{ rendicion.fecha_fin.strftime('%d/%m/%Y') }}
+                        </strong>
+                    </div>
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Proyecto</div>
+                        <strong>{{ rendicion.proyecto or '—' }}</strong>
+                    </div>
+                    <div class="col-6 col-md-4 mb-3">
+                        <div class="text-muted small">Centro de costo</div>
+                        <strong>{{ rendicion.centro_costo or '—' }}</strong>
+                    </div>
+                    {% if rendicion.descripcion %}
+                    <div class="col-12">
+                        <div class="text-muted small">Descripción</div>
+                        <strong>{{ rendicion.descripcion }}</strong>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de ítems -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Detalle de Gastos</span>
+                <div>
+                    {% set n_comp = items|selectattr('comprobante')|list|length %}
+                    {% if n_comp > 0 %}
+                    <a href="{{ url_for('download.descargar_todos_comprobantes', rendicion_id=rendicion.id) }}"
+                       class="btn btn-sm btn-outline-secondary me-2">
+                        <i class="bi bi-file-zip"></i> Descargar todos los comprobantes ({{ n_comp }})
+                    </a>
+                    {% endif %}
+                    <span class="badge bg-secondary">{{ items|length }} ítem(s)</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th>Proveedor</th>
+                                <th>Documento</th>
+                                <th class="text-end">Monto</th>
+                                <th class="text-center">Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td class="text-muted small">{{ loop.index }}</td>
+                                <td class="small">
+                                    {{ item.fecha_gasto.strftime('%d/%m/%Y') if item.fecha_gasto else '—' }}
+                                </td>
+                                <td class="small">{{ item.tipo_gasto }}</td>
+                                <td>{{ item.descripcion }}</td>
+                                <td class="small text-muted">{{ item.proveedor or '—' }}</td>
+                                <td class="small">
+                                    <span class="badge bg-light text-dark">
+                                        {{ item.get_tipo_documento_display() }}
+                                    </span>
+                                    {% if item.numero_documento %}
+                                    <br><small class="text-muted">{{ item.numero_documento }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-bold">
+                                    ${{ "{:,.0f}".format(item.monto|float).replace(',', '.') }}
+                                </td>
+                                <td class="text-center">
+                                    {% if item.comprobante %}
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('rendiciones.ver_comprobante', filename=item.comprobante) }}"
+                                           class="btn btn-outline-secondary" target="_blank" title="Ver">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('download.descargar_comprobante', item_id=item.id) }}"
+                                           class="btn btn-outline-primary" title="Descargar">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </div>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Sin comprobante</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="6" class="text-end fw-bold">TOTAL</td>
+                                <td class="text-end fw-bold text-primary fs-5">
+                                    ${{ "{:,.0f}".format(rendicion.monto_total|float).replace(',', '.') }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de decisión -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 sticky-top" style="top: 80px;">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-gavel"></i> Decisión de Aprobación</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="display-6 text-primary fw-bold">
+                        ${{ "{:,.0f}".format(rendicion.monto_total|float).replace(',', '.') }}
+                    </div>
+                    <small class="text-muted">Monto total solicitado</small>
+                </div>
+
+                <hr>
+
+                <!-- Formulario aprobar -->
+                <form method="POST" action="{{ url_for('aprobaciones.aprobar', id=rendicion.id) }}"
+                      onsubmit="return confirm('¿Aprobar esta rendición por ${{ '{:,.0f}'.format(rendicion.monto_total|float).replace(',','.') }}?')">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">
+                            Comentarios (opcional)
+                        </label>
+                        <textarea name="comentarios" class="form-control form-control-sm"
+                                  rows="3"
+                                  placeholder="Observaciones al aprobar..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 mb-2">
+                        <i class="bi bi-check-circle-fill"></i> Aprobar Rendición
+                    </button>
+                </form>
+
+                <hr>
+
+                <!-- Formulario rechazar -->
+                <form method="POST" action="{{ url_for('aprobaciones.rechazar', id=rendicion.id) }}"
+                      onsubmit="return validarRechazo(this)">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">
+                            Motivo del rechazo <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="comentarios" id="motivoRechazo" class="form-control form-control-sm"
+                                  rows="3"
+                                  placeholder="Indica el motivo del rechazo..."></textarea>
+                        <div class="invalid-feedback">El motivo del rechazo es obligatorio.</div>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-x-circle-fill"></i> Rechazar Rendición
+                    </button>
+                </form>
+
+                <hr>
+                <a href="{{ url_for('aprobaciones.index') }}" class="btn btn-outline-secondary w-100 btn-sm">
+                    <i class="bi bi-arrow-left"></i> Volver a la lista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function validarRechazo(form) {
+    const motivo = document.getElementById('motivoRechazo');
+    if (!motivo.value.trim()) {
+        motivo.classList.add('is-invalid');
+        return false;
+    }
+    return confirm('¿Rechazar esta rendición? El colaborador será notificado.');
+}
+document.getElementById('motivoRechazo').addEventListener('input', function () {
+    this.classList.remove('is-invalid');
+});
+</script>
+{% endblock %}

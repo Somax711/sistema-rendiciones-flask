@@ -1,0 +1,181 @@
+{% extends 'layout.html' %}
+
+{% block title %}Mi Perfil - Sistema Rendiciones{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-person-circle"></i> Mi Perfil</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Datos personales -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person"></i> Información Personal</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.perfil') }}">
+                    <input type="hidden" name="action" value="update_profile">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre completo</label>
+                        <input type="text" class="form-control" name="nombre"
+                               value="{{ user.nombre }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                        <div class="form-text">El email no puede modificarse.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" class="form-control" name="telefono"
+                               value="{{ user.telefono or '' }}" placeholder="+56 9 1234 5678">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Departamento</label>
+                        <input type="text" class="form-control" name="departamento"
+                               value="{{ user.departamento or '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" class="form-control" name="cargo"
+                               value="{{ user.cargo or '' }}">
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="text-muted small">
+                            <i class="bi bi-calendar3"></i>
+                            Miembro desde {{ user.fecha_creacion.strftime('%d/%m/%Y') if user.fecha_creacion else '—' }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Guardar cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cambiar contraseña -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-lock"></i> Cambiar Contraseña</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.perfil') }}" id="changePassForm">
+                    <input type="hidden" name="action" value="change_password">
+
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña actual</label>
+                        <input type="password" class="form-control" name="current_password" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nueva contraseña</label>
+                        <input type="password" class="form-control" name="new_password"
+                               id="new_password" minlength="8" required>
+                        <div class="form-text">Mínimo 8 caracteres.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Confirmar nueva contraseña</label>
+                        <input type="password" class="form-control" name="confirm_password"
+                               id="confirm_password" minlength="8" required>
+                        <div class="form-text text-danger d-none" id="passMatchError">Las contraseñas no coinciden.</div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="bi bi-check-lg"></i> Actualizar contraseña
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Autenticación de dos factores -->
+        <div class="card shadow-sm">
+            <div class="card-header {% if user.mfa_habilitado %}bg-success{% else %}bg-light{% endif %} {% if user.mfa_habilitado %}text-white{% endif %}">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-lock"></i> Autenticación en dos pasos (MFA)
+                    {% if user.mfa_habilitado %}
+                        <span class="badge bg-light text-success ms-2">Activa</span>
+                    {% else %}
+                        <span class="badge bg-secondary ms-2">Inactiva</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if user.mfa_habilitado %}
+                    <p class="text-muted">La autenticación de dos pasos está habilitada para tu cuenta.</p>
+                    <form method="POST" action="{{ url_for('auth.perfil') }}">
+                        <input type="hidden" name="action" value="disable_mfa">
+                        <button type="submit" class="btn btn-outline-danger"
+                                onclick="return confirm('¿Desactivar la autenticación de dos pasos? Esto reducirá la seguridad de tu cuenta.')">
+                            <i class="bi bi-shield-x"></i> Desactivar MFA
+                        </button>
+                    </form>
+
+                {% elif qr_code %}
+                    <!-- Mostrar QR para configurar MFA -->
+                    <p>Escanea este código QR con tu app autenticadora (Google Authenticator, Authy, etc.):</p>
+                    <div class="text-center my-3">
+                        <img src="data:image/png;base64,{{ qr_code }}" alt="QR MFA" class="img-fluid" style="max-width: 200px;">
+                    </div>
+                    {% if mfa_secret %}
+                    <p class="text-center text-muted small">
+                        Clave manual: <code>{{ mfa_secret }}</code>
+                    </p>
+                    {% endif %}
+                    <p>Luego ingresa el código de 6 dígitos generado para confirmar:</p>
+                    <form method="POST" action="{{ url_for('auth.perfil') }}">
+                        <input type="hidden" name="action" value="verify_mfa">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="mfa_token"
+                                   maxlength="6" pattern="\d{6}" placeholder="000000" required>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-shield-check"></i> Activar
+                            </button>
+                        </div>
+                    </form>
+
+                {% else %}
+                    <p class="text-muted">Añade una capa extra de seguridad a tu cuenta.</p>
+                    <form method="POST" action="{{ url_for('auth.perfil') }}">
+                        <input type="hidden" name="action" value="enable_mfa">
+                        <button type="submit" class="btn btn-outline-success">
+                            <i class="bi bi-shield-plus"></i> Activar MFA
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('changePassForm').addEventListener('submit', function (e) {
+        const p1 = document.getElementById('new_password').value;
+        const p2 = document.getElementById('confirm_password').value;
+        const err = document.getElementById('passMatchError');
+        if (p1 !== p2) {
+            e.preventDefault();
+            err.classList.remove('d-none');
+        } else {
+            err.classList.add('d-none');
+        }
+    });
+</script>
+{% endblock %}

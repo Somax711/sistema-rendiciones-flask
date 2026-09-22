@@ -1,0 +1,148 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Usuario{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">
+        <i class="bi bi-house"></i> Bienvenido, {{ current_user.nombre }}
+    </h2>
+    
+    <!-- Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.total_rendiciones }}</h3>
+                    <p class="text-muted mb-0">Total Rendiciones</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.en_revision }}</h3>
+                    <p class="text-muted mb-0">En Revisión</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.aprobadas }}</h3>
+                    <p class="text-muted mb-0">Aprobadas</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-currency-dollar text-info" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2">{{ stats.monto_aprobado|format_currency }}</h3>
+                    <p class="text-muted mb-0">Total Aprobado</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Acciones Rápidas -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-lightning"></i> Acciones Rápidas
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('rendiciones.crear') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-plus-circle"></i> Nueva Rendición
+                    </a>
+                    <a href="{{ url_for('rendiciones.index') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-list"></i> Ver Mis Rendiciones
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Rendiciones Recientes -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-clock-history"></i> Rendiciones Recientes
+                </div>
+                <div class="card-body">
+                    {% if stats.rendiciones_recientes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rendicion in stats.rendiciones_recientes %}
+                                <tr>
+                                    <td>{{ rendicion.numero_rendicion }}</td>
+                                    <td>{{ rendicion.fecha_creacion|format_date }}</td>
+                                    <td>{{ rendicion.monto_total|format_currency }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ rendicion.get_estado_class() }}">
+                                            {{ rendicion.get_estado_display() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('rendiciones.detalle', id=rendicion.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No tienes rendiciones aún</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gastos por Tipo -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-pie-chart"></i> Gastos por Tipo (últimos 3 meses)
+                </div>
+                <div class="card-body">
+                    {% if stats.gastos_por_tipo %}
+                    <ul class="list-group list-group-flush">
+                        {% for tipo, monto in stats.gastos_por_tipo %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ tipo }}
+                            <span class="badge bg-primary rounded-pill">
+                                {{ monto|format_currency }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted text-center">No hay gastos registrados</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

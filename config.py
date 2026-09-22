@@ -4,34 +4,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class Config:
     """Configuración base de la aplicación."""
 
     # Flask
-    SECRET_KEY = os.getenv('SECRET_KEY')
-    if not SECRET_KEY:
-        # Fallback solo para desarrollo; en producción debe estar en .env
-        SECRET_KEY = 'dev-secret-key-cambiar-en-produccion-12345'
-
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-cambiar-en-produccion')
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
     DEBUG = FLASK_ENV == 'development'
 
-    # Base de datos (se sobreescribe en app.py con DATABASE_URL)
+    # Base de datos 
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Engine solo si NO es SQLite (PostgreSQL/MySQL soportan pool)
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-        'pool_size': 5,
-        'max_overflow': 10,
-    }
-
     # Sesiones
     PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
-    SESSION_COOKIE_SECURE = False       # Se activa en producción
+    SESSION_COOKIE_SECURE = False     
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 
@@ -39,7 +26,7 @@ class Config:
     UPLOAD_FOLDER = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'uploads'
     )
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  
     ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
     # Email
@@ -75,21 +62,12 @@ class ProductionConfig(Config):
     TESTING = False
     SESSION_COOKIE_SECURE = True
 
-    # En producción, el engine NO aplica a SQLite
-    @property
-    def SQLALCHEMY_ENGINE_OPTIONS(self):
-        db_url = os.getenv('DATABASE_URL', '')
-        if db_url.startswith('sqlite'):
-            return {}
-        return Config.SQLALCHEMY_ENGINE_OPTIONS
-
 
 class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
-    SQLALCHEMY_ENGINE_OPTIONS = {}
 
 
 config_by_name = {
